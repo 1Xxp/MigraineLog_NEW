@@ -1,4 +1,5 @@
-var CACHE_NAME = 'migraine-log-v1';
+var CACHE_VERSION = 2;
+var CACHE_NAME = 'migraine-log-v' + CACHE_VERSION;
 var CACHE_URLS = [
   './index.html',
   './manifest.json',
@@ -22,6 +23,12 @@ self.addEventListener('activate', function(event) {
         names.filter(function(n) { return n !== CACHE_NAME; })
              .map(function(n) { return caches.delete(n); })
       );
+    }).then(function() {
+      self.clients.matchAll({ includeUncontrolled: true }).then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({ type: 'update' });
+        });
+      });
     })
   );
   self.clients.claim();
