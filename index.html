@@ -833,6 +833,73 @@
     padding: 24px 0;
     font-size: 14px;
   }
+
+  .location-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .location-grid label {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #f2f2f7;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #636366;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    margin-bottom: 0;
+  }
+
+  .location-grid input[type="checkbox"] { display: none; }
+
+  .location-grid input[type="checkbox"]:checked + label {
+    background: #e5f0ff;
+    color: #007aff;
+  }
+
+  .effect-options {
+    display: flex;
+    gap: 8px;
+  }
+
+  .effect-options input[type="radio"] { display: none; }
+
+  .effect-options label {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 16px;
+    background: #f2f2f7;
+    color: #636366;
+    cursor: pointer;
+    margin-bottom: 0;
+  }
+
+  .effect-options input[type="radio"]:checked + label {
+    background: #e8f8ef;
+    color: #34c759;
+  }
+
+  .record-location {
+    font-size: 12px;
+    color: #5856d6;
+    margin-bottom: 4px;
+  }
+
+  .record-med {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #fff8e6;
+    color: #8a6d00;
+    margin-right: 4px;
+  }
 </style>
 </head>
 <body>
@@ -973,6 +1040,33 @@
           <input type="checkbox" id="t-sleep" value="睡眠不足"><label for="t-sleep">💤 睡眠不足</label>
         </div>
       </div>
+      <div class="trigger-group">
+        <span class="group-label">疼痛位置（可多选）</span>
+        <div class="location-grid">
+          <input type="checkbox" id="loc-left" value="左侧"><label for="loc-left">👈 左侧</label>
+          <input type="checkbox" id="loc-right" value="右侧"><label for="loc-right">👉 右侧</label>
+          <input type="checkbox" id="loc-front" value="前额"><label for="loc-front">🔝 前额</label>
+          <input type="checkbox" id="loc-back" value="后脑"><label for="loc-back">👇 后脑</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>用药（选填）</label>
+          <input type="text" id="medName" placeholder="药名">
+        </div>
+        <div class="form-group">
+          <label>剂量</label>
+          <input type="text" id="medDosage" placeholder="如100mg">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>药效</label>
+        <div class="effect-options">
+          <input type="radio" name="medEffect" id="med-effect-yes" value="有效"><label for="med-effect-yes">有效</label>
+          <input type="radio" name="medEffect" id="med-effect-partial" value="部分有效"><label for="med-effect-partial">部分有效</label>
+          <input type="radio" name="medEffect" id="med-effect-no" value="无效"><label for="med-effect-no">无效</label>
+        </div>
+      </div>
       <div class="form-group">
         <label>备注</label>
         <textarea id="notes" placeholder="记录诱因、症状、用药等…"></textarea>
@@ -1030,6 +1124,50 @@
   })();
 
   var TRIGGER_IDS = ['t-stayup','t-stress','t-coffee','t-food','t-weather','t-screen','t-exercise','t-sleep'];
+	  var LOCATION_IDS = ['loc-left','loc-right','loc-front','loc-back'];
+
+	  function getSelectedLocations() {
+	    var s = [];
+	    for (var i = 0; i < LOCATION_IDS.length; i++) {
+	      var cb = document.getElementById(LOCATION_IDS[i]);
+	      if (cb && cb.checked) s.push(cb.value);
+	    }
+	    return s;
+	  }
+	  function setSelectedLocations(locations) {
+	    for (var i = 0; i < LOCATION_IDS.length; i++) {
+	      var cb = document.getElementById(LOCATION_IDS[i]);
+	      if (cb) cb.checked = locations.indexOf(cb.value) !== -1;
+	    }
+	  }
+	  function clearLocations() {
+	    for (var i = 0; i < LOCATION_IDS.length; i++) {
+	      var cb = document.getElementById(LOCATION_IDS[i]);
+	      if (cb) cb.checked = false;
+	    }
+	  }
+	  function getMedication() {
+	    var name = document.getElementById('medName').value.trim();
+	    var dosage = document.getElementById('medDosage').value.trim();
+	    var effect = document.querySelector('input[name="medEffect"]:checked');
+	    if (!name && !dosage && !effect) return null;
+	    return { name: name, dosage: dosage, effect: effect ? effect.value : '' };
+	  }
+	  function setMedication(med) {
+	    if (!med) return;
+	    document.getElementById('medName').value = med.name || '';
+	    document.getElementById('medDosage').value = med.dosage || '';
+	    if (med.effect) {
+	      var radio = document.getElementById('med-effect-' + ({'有效':'yes','部分有效':'partial','无效':'no'}[med.effect] || ''));
+	      if (radio) radio.checked = true;
+	    }
+	  }
+	  function clearMedication() {
+	    document.getElementById('medName').value = '';
+	    document.getElementById('medDosage').value = '';
+	    var radios = document.querySelectorAll('input[name="medEffect"]');
+	    for (var i = 0; i < radios.length; i++) radios[i].checked = false;
+	  }
 
   function showToast(msg, type) {
     var toast = document.getElementById('toast');
@@ -1070,7 +1208,7 @@
       typeof r.painLevel === 'number' && r.painLevel >= 1 && r.painLevel <= 10 &&
       typeof r.duration === 'number' && r.duration > 0 &&
       typeof r.notes === 'string' &&
-      (Array.isArray(r.triggers) || typeof r.triggers === 'undefined');
+      (Array.isArray(r.triggers) || typeof r.triggers === 'undefined') && (Array.isArray(r.locations) || typeof r.locations === 'undefined') && (r.medication === null || typeof r.medication === 'object' || typeof r.medication === 'undefined');
   }
 
   function escapeHtml(str) {
@@ -1154,6 +1292,8 @@
       document.getElementById('duration').value = record.duration;
       document.getElementById('notes').value = record.notes;
       setSelectedTriggers(record.triggers || []);
+	      setSelectedLocations(record.locations || []);
+	      setMedication(record.medication || null);
       document.getElementById('modalTitle').textContent = '编辑记录';
       document.getElementById('modalTitle').classList.add('editing');
       document.getElementById('editHint').style.display = 'block';
@@ -1183,6 +1323,8 @@
     document.getElementById('btnCancel').style.display = 'none';
     clearFieldError('date'); clearFieldError('painLevel'); clearFieldError('duration');
     clearTriggers();
+	    clearLocations();
+	    clearMedication();
   }
 
   function quickRecord(level) {
@@ -1196,6 +1338,8 @@
       notes: '',
       triggers: []
     });
+	      locations: [],
+	      medication: null
     saveRecords(records);
     showToast('记录成功');
     renderAll();
@@ -1238,6 +1382,8 @@
               typeof r.painLevel === 'number' && r.painLevel >= 1 && r.painLevel <= 10 &&
               typeof r.duration === 'number' && r.duration > 0 && typeof r.notes === 'string') {
             if (!Array.isArray(r.triggers)) r.triggers = [];
+	            if (!Array.isArray(r.locations)) r.locations = [];
+	            if (!r.medication) r.medication = null;
             valid.push(r);
           }
         }
@@ -1289,7 +1435,7 @@
           '<div class="recent-dot ' + pc + '"></div>' +
           '<div class="recent-info">' +
             '<div class="recent-date">' + r.date.slice(5) + '</div>' +
-            '<div class="recent-meta">' + painLabel(r.painLevel) + ' · ' + r.duration + 'h' + (r.triggers && r.triggers.length > 0 ? ' · ' + r.triggers.join('、') : '') + '</div>' +
+            '<div class="recent-meta">' + (r.locations && r.locations.length > 0 ? r.locations.join('/') + ' · ' : '') + painLabel(r.painLevel) + ' · ' + r.duration + 'h' + (r.triggers && r.triggers.length > 0 ? ' · ' + r.triggers.join('、') : '') + '</div>' +
           '</div>' +
           '<div class="recent-pain">' + r.painLevel + '<span>/10</span></div>' +
         '</div>';
@@ -1507,7 +1653,9 @@
           '</div>' +
           '<div class="record-detail">⏱ ' + r.duration + ' 小时</div>' +
           '<div class="pain-bar-wrap"><div class="pain-bar-bg"><div class="pain-bar-fill ' + pc + '" style="width:' + (r.painLevel * 10) + '%"></div></div></div>' +
+          (r.locations && r.locations.length > 0 ? '<div class="record-location">📍 ' + r.locations.join(' · ') + '</div>' : '') +
           (r.triggers && r.triggers.length > 0 ? '<div class="record-triggers">' + r.triggers.map(function(t) { return '<span class="record-trigger-tag">' + escapeHtml(t) + '</span>'; }).join('') + '</div>' : '') +
+          (r.medication && r.medication.name ? '<span class="record-med">💊 ' + escapeHtml(r.medication.name) + (r.medication.dosage ? ' ' + escapeHtml(r.medication.dosage) : '') + (r.medication.effect ? ' (' + r.medication.effect + ')' : '') + '</span>' : '') +
           (r.notes ? '<div class="record-notes">' + escapeHtml(r.notes) + '</div>' : '') +
           '<div class="record-actions">' +
             '<button class="btn-sm edit" onclick="openForm(loadRecords().find(function(x){return x.id===\'' + r.id + '\'}))">编辑</button>' +
@@ -1535,13 +1683,15 @@
     var durVal = parseFloat(document.getElementById('duration').value);
     var notesVal = document.getElementById('notes').value.trim();
     var triggersVal = getSelectedTriggers();
+	    var locationsVal = getSelectedLocations();
+	    var medicationVal = getMedication();
     var records = loadRecords();
     var editId = document.getElementById('editRecordId').value;
     if (editId) {
       for (var i = 0; i < records.length; i++) {
         if (records[i].id === editId) {
           records[i].date = dateVal; records[i].painLevel = painVal;
-          records[i].duration = durVal; records[i].notes = notesVal; records[i].triggers = triggersVal;
+          records[i].duration = durVal; records[i].notes = notesVal; records[i].triggers = triggersVal; records[i].locations = locationsVal; records[i].medication = medicationVal;
           break;
         }
       }
@@ -1550,7 +1700,7 @@
     } else {
       records.push({
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        date: dateVal, painLevel: painVal, duration: durVal, notes: notesVal, triggers: triggersVal
+        date: dateVal, painLevel: painVal, duration: durVal, notes: notesVal, triggers: triggersVal, locations: locationsVal, medication: medicationVal
       });
       saveRecords(records);
       showToast('保存成功');
