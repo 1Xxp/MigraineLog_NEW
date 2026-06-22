@@ -1,5 +1,4 @@
-var CACHE_VERSION = 2;
-var CACHE_NAME = 'migraine-log-v' + CACHE_VERSION;
+var CACHE_NAME = 'migraine-log-v1';
 var CACHE_URLS = [
   './index.html',
   './manifest.json',
@@ -23,12 +22,6 @@ self.addEventListener('activate', function(event) {
         names.filter(function(n) { return n !== CACHE_NAME; })
              .map(function(n) { return caches.delete(n); })
       );
-    }).then(function() {
-      self.clients.matchAll({ includeUncontrolled: true }).then(function(clients) {
-        clients.forEach(function(client) {
-          client.postMessage({ type: 'update' });
-        });
-      });
     })
   );
   self.clients.claim();
@@ -37,11 +30,11 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('fetch', function(event) {
   var url = new URL(event.request.url);
 
+  // External resources: cache-first (CDN scripts etc.)
   if (url.origin !== self.location.origin) {
     event.respondWith(
       caches.match(event.request).then(function(cached) {
-        if (cached) return cached;
-        return fetch(event.request).then(function(resp) {
+        return cached || fetch(event.request).then(function(resp) {
           if (resp && resp.status === 200) {
             var clone = resp.clone();
             caches.open(CACHE_NAME).then(function(cache) {
@@ -49,17 +42,32 @@ self.addEventListener('fetch', function(event) {
             });
           }
           return resp;
-        }).catch(function() {
-          return new Response('离线不可用', { status: 503 });
         });
       })
     );
     return;
   }
 
+  // HTML navigations: network-first, always try to get latest version
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then(function(resp) {
+        var clone = resp.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, clone);
+        });
+        return resp;
+      }).catch(function() {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // Static assets: cache-first
   event.respondWith(
     caches.match(event.request).then(function(cached) {
-      var fetchPromise = fetch(event.request).then(function(resp) {
+      return cached || fetch(event.request).then(function(resp) {
         if (resp && resp.status === 200) {
           var clone = resp.clone();
           caches.open(CACHE_NAME).then(function(cache) {
@@ -67,10 +75,7 @@ self.addEventListener('fetch', function(event) {
           });
         }
         return resp;
-      }).catch(function() {
-        return cached;
       });
-      return fetchPromise || cached;
     })
   );
 });
