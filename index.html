@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#667eea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="头痛记录">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.svg">
+<title>偏头痛记录</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: #f2f2f7;
+    color: #1c1c1e;
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    background: #f2f2f7;
+    padding-bottom: 80px;
+  }
+
+  .page { display: none; padding: 20px 16px; }
+  .page.active { display: block; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .page-header {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1c1c1e;
+    margin-bottom: 20px;
+    padding-top: 8px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+  }
+
+  .today-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.3);
+  }
+
+  .today-date {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-bottom: 8px;
+  }
+
+  .today-status {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .today-sub {
+    font-size: 13px;
+    opacity: 0.75;
+  }
+
+  .today-action-btn {
+    margin-top: 14px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    background: rgba(255,255,255,0.92);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+  }
+
+  .today-action-btn:active {
+    transform: scale(0.95);
+    background: rgba(255,255,255,0.8);
+  }
+
+  .quick-section { margin-bottom: 20px; }
+
+  .quick-btns {
+    display: flex;
+    gap: 10px;
+  }
+
+  .quick-btn {
+    flex: 1;
+    padding: 16px 8px;
+    border-radius: 16px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    text-align: center;
+    color: #fff;
+  }
+
+  .quick-btn:active { transform: scale(0.96); }
+
+  .quick-btn.mild {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+    box-shadow: 0 4px 14px rgba(67,233,123,0.3);
+  }
+
+  .quick-btn.moderate {
+    background: linear-gradient(135deg, #f6d365, #fda085);
+    box-shadow: 0 4px 14px rgba(253,160,133,0.3);
+  }
+
+  .quick-btn.severe {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    box-shadow: 0 4px 14px rgba(245,87,108,0.3);
+  }
+
+  .quick-btn-label {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  .recent-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #f2f2f7;
+    cursor: pointer;
+  }
+
+  .recent-item:last-child { border-bottom: none; }
+
+  .recent-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 14px;
+    flex-shrink: 0;
+  }
+
+  .recent-dot.low { background: #34c759; }
+  .recent-dot.mid { background: #ff9500; }
+  .recent-dot.high { background: #ff3b30; }
+
+  .recent-info { flex: 1; }
+
+  .recent-date {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1c1c1e;
+  }
+
+  .recent-meta {
+    font-size: 13px;
+    color: #8e8e93;
+    margin-top: 2px;
+  }
+
+  .recent-pain {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1c1c1e;
+  }
+
+  .recent-pain span {
+    font-size: 12px;
+    font-weight: 400;
+    color: #8e8e93;
+  }
+
+  .empty-hint {
+    text-align: center;
+    color: #8e8e93;
+    padding: 30px 0;
+    font-size: 14px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 10px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1c1c1e;
+  }
+
+  .stat-value .unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: #8e8e93;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #8e8e93;
+    margin-top: 4px;
+  }
+
+  .stat-box.blue .stat-value { color: #007aff; }
+  .stat-box.orange .stat-value { color: #ff9500; }
+  .stat-box.purple .stat-value { color: #af52de; }
+
+  .chart-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .chart-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1c1e;
+    margin-bottom: 12px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    max-height: 220px;
+  }
+
+  .insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f2f2f7;
+    font-size: 14px;
+    color: #1c1c1e;
+    line-height: 1.5;
+  }
+
+  .insight-item:last-child { border-bottom: none; }
+
+  .insight-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+  }
+
+  .trigger-analysis {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #f2f2f7;
+  }
+
+  .trigger-analysis-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1c1c1e;
+    margin-bottom: 12px;
+  }
+
+  .trigger-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .trigger-stat-label {
+    width: 60px;
+    text-align: right;
+    color: #8e8e93;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .trigger-stat-bar-wrap {
+    flex: 1;
+    height: 18px;
+    background: #f2f2f7;
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  .trigger-stat-bar {
+    height: 100%;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #007aff, #5856d6);
+    transition: width 0.4s ease;
+  }
+
+  .trigger-stat-bar.top {
+    background: linear-gradient(135deg, #ff9500, #ff6b00);
+  }
+
+  .trigger-stat-count {
+    width: 32px;
+    text-align: left;
+    color: #1c1c1e;
+    font-weight: 600;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  .trigger-correlation {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: #fff8e6;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #8a6d00;
+  }
+
+  .trigger-correlation-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .trigger-correlation-item {
+    padding: 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .trigger-correlation-item .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #cc9a00;
+    flex-shrink: 0;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-bar input, .filter-bar select {
+    padding: 8px 10px;
+    font-size: 13px;
+    border: 1px solid #e5e5ea;
+    border-radius: 10px;
+    background: #fff;
+    color: #1c1c1e;
+    outline: none;
+  }
+
+  .filter-bar input:focus, .filter-bar select:focus {
+    border-color: #007aff;
+  }
+
+  .filter-bar .btn-reset {
+    padding: 8px 14px;
+    font-size: 13px;
+    border: none;
+    border-radius: 10px;
+    background: #e5e5ea;
+    color: #1c1c1e;
+    cursor: pointer;
+  }
+
+  .filter-hint {
+    font-size: 12px;
+    color: #8e8e93;
+    margin-bottom: 10px;
+  }
+
+  .record-item {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .record-item:active { transform: scale(0.98); }
+
+  .record-item.active-edit {
+    border: 2px solid #007aff;
+  }
+
+  .record-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .record-date-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1c1e;
+  }
+
+  .record-pain-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    color: #fff;
+  }
+
+  .record-pain-badge.low { background: #34c759; }
+  .record-pain-badge.mid { background: #ff9500; }
+  .record-pain-badge.high { background: #ff3b30; }
+
+  .record-detail {
+    font-size: 13px;
+    color: #8e8e93;
+    margin-bottom: 6px;
+  }
+
+  .record-triggers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .record-trigger-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #eef;
+    color: #5856d6;
+  }
+
+  .record-notes {
+    font-size: 13px;
+    color: #636366;
+    margin-top: 4px;
+  }
+
+  .record-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 13px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .btn-sm.edit { background: #e5f0ff; color: #007aff; }
+  .btn-sm.delete { background: #ffe5e5; color: #ff3b30; }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .title-row h2 {
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .title-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .btn-io {
+    padding: 6px 12px;
+    font-size: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .btn-io.import-btn { background: #e8f8ef; color: #34c759; }
+  .btn-io.export-btn { background: #e5f0ff; color: #007aff; }
+
+  .import-file-input { display: none; }
+
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid #e5e5ea;
+    display: flex;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0 6px;
+    cursor: pointer;
+    color: #8e8e93;
+    transition: color 0.2s;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  .nav-item.active { color: #007aff; }
+
+  .nav-icon {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .modal-overlay.show {
+    display: flex;
+  }
+
+  .modal-sheet {
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px 20px 40px;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-handle {
+    width: 36px;
+    height: 5px;
+    background: #d1d1d6;
+    border-radius: 3px;
+    margin: 0 auto 18px;
+  }
+
+  .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .modal-title.editing { color: #ff9500; }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #8e8e93;
+    margin-bottom: 6px;
+  }
+
+  .form-group input, .form-group textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1.5px solid #e5e5ea;
+    border-radius: 12px;
+    background: #fff;
+    color: #1c1c1e;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .form-group input:focus, .form-group textarea:focus {
+    border-color: #007aff;
+  }
+
+  .form-group input.has-error, .form-group textarea.has-error {
+    border-color: #ff3b30;
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .form-row .form-group { flex: 1; }
+
+  .field-error {
+    font-size: 12px;
+    color: #ff3b30;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .trigger-group {
+    margin-bottom: 16px;
+  }
+
+  .trigger-group .group-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8e8e93;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .trigger-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .trigger-options input[type="checkbox"] { display: none; }
+
+  .trigger-options label {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #f2f2f7;
+    color: #636366;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    margin-bottom: 0;
+  }
+
+  .trigger-options input[type="checkbox"]:checked + label {
+    background: #e5f0ff;
+    color: #007aff;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .btn-submit {
+    flex: 1;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    background: #007aff;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-submit:active { background: #0062d6; }
+  .btn-submit.edit-mode { background: #ff9500; }
+  .btn-submit.edit-mode:active { background: #e08600; }
+
+  .btn-cancel {
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #8e8e93;
+    background: #f2f2f7;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+  }
+
+  .edit-hint {
+    font-size: 13px;
+    color: #ff9500;
+    background: #fff8e6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .fab {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: #007aff;
+    color: #fff;
+    font-size: 28px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,122,255,0.35);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+    max-width: 480px;
+  }
+
+  .fab:active { transform: translateX(-50%) scale(0.92); }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast.success { background: #34c759; }
+  .toast.info { background: #007aff; }
+  .toast.warning { background: #ff9500; }
+
+  .pain-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .pain-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #f2f2f7;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .pain-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  .pain-bar-fill.low { background: #34c759; }
+  .pain-bar-fill.mid { background: #ff9500; }
+  .pain-bar-fill.high { background: #ff3b30; }
+
+  .chart-empty {
+    text-align: center;
+    color: #8e8e93;
+    padding: 24px 0;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <div class="page active" id="pageHome">
+    <div class="page-header">偏头痛记录</div>
+
+    <div class="today-card" id="todayCard">
+      <div class="today-date" id="todayDate"></div>
+      <div class="today-status" id="todayStatus">今日未记录</div>
+      <div class="today-sub" id="todaySub">今天还没有记录</div>
+      <button class="today-action-btn" id="todayActionBtn" onclick="document.querySelector('.quick-section').scrollIntoView({behavior:'smooth'})">立即记录</button>
+    </div>
+
+    <div class="quick-section">
+      <div class="card-title">快速记录</div>
+      <div class="quick-btns">
+        <button class="quick-btn mild" onclick="quickRecord(2)">
+          😊 轻度
+          <div class="quick-btn-label">1-3级</div>
+        </button>
+        <button class="quick-btn moderate" onclick="quickRecord(5)">
+          😣 中度
+          <div class="quick-btn-label">4-6级</div>
+        </button>
+        <button class="quick-btn severe" onclick="quickRecord(8)">
+          🔥 重度
+          <div class="quick-btn-label">7-10级</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card-title">最近记录</div>
+      <div class="card" id="recentList" style="padding:6px 16px">
+        <div class="empty-hint">暂无记录</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="pageStats">
+    <div class="page-header">统计分析</div>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">📉 疼痛等级趋势</div>
+      <div class="chart-wrap">
+        <canvas id="painTrendChart"></canvas>
+      </div>
+      <div id="painTrendEmpty" class="chart-empty" style="display:none">添加记录后查看</div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">📊 每周发作次数</div>
+      <div class="chart-wrap">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+      <div id="weeklyEmpty" class="chart-empty" style="display:none">添加记录后查看</div>
+    </div>
+
+    <div class="card" id="insightCard">
+      <div class="card-title">💡 智能分析</div>
+      <div id="insightPanel">
+        <div class="empty-hint">添加记录后查看</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="pageRecords">
+    <div class="title-row">
+      <h2>全部记录</h2>
+      <div class="title-actions">
+        <button class="btn-io import-btn" onclick="document.getElementById('importFile').click()">📤 导入</button>
+        <button class="btn-io export-btn" onclick="exportData()">📥 导出</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" class="import-file-input" accept=".json" onchange="importData(event)">
+
+    <div class="filter-bar">
+      <input type="date" id="filterDateFrom" placeholder="起始">
+      <input type="date" id="filterDateTo" placeholder="结束">
+      <select id="filterPainMin">
+        <option value="">疼痛≥</option>
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+      <button class="btn-reset" onclick="resetFilters()">重置</button>
+    </div>
+    <div class="filter-hint" id="filterHint" style="display:none"></div>
+    <div id="recordList">
+      <div class="empty-hint">暂无记录</div>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn" onclick="openForm()">+</button>
+
+<div class="modal-overlay" id="formModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">新增记录</div>
+    <div id="editHint" class="edit-hint" style="display:none">✏️ 正在编辑记录，修改后点击"更新记录"保存</div>
+    <form id="migraineForm" novalidate>
+      <input type="hidden" id="editRecordId">
+      <div class="form-group">
+        <label>日期</label>
+        <input type="date" id="date" required>
+        <span class="field-error" id="err-date"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>疼痛等级 (1-10)</label>
+          <input type="number" id="painLevel" min="1" max="10" required>
+          <span class="field-error" id="err-pain"></span>
+        </div>
+        <div class="form-group">
+          <label>持续时长 (h)</label>
+          <input type="number" id="duration" min="0.5" step="0.5" required>
+          <span class="field-error" id="err-duration"></span>
+        </div>
+      </div>
+      <div class="trigger-group">
+        <span class="group-label">诱因标签（可多选）</span>
+        <div class="trigger-options">
+          <input type="checkbox" id="t-stayup" value="熬夜"><label for="t-stayup">🌙 熬夜</label>
+          <input type="checkbox" id="t-stress" value="压力"><label for="t-stress">😤 压力</label>
+          <input type="checkbox" id="t-coffee" value="咖啡"><label for="t-coffee">☕ 咖啡</label>
+          <input type="checkbox" id="t-food" value="饮食"><label for="t-food">🍽 饮食</label>
+          <input type="checkbox" id="t-weather" value="天气"><label for="t-weather">🌦 天气</label>
+          <input type="checkbox" id="t-screen" value="屏幕使用"><label for="t-screen">📱 屏幕</label>
+          <input type="checkbox" id="t-exercise" value="运动"><label for="t-exercise">🏃 运动</label>
+          <input type="checkbox" id="t-sleep" value="睡眠不足"><label for="t-sleep">💤 睡眠不足</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="notes" placeholder="记录诱因、症状、用药等…"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btnSubmit">保存记录</button>
+        <button type="button" class="btn-cancel" id="btnCancel" style="display:none">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" data-page="pageHome" onclick="switchPage('pageHome', this)">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">首页</span>
+  </button>
+  <button class="nav-item" data-page="pageStats" onclick="switchPage('pageStats', this)">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">统计</span>
+  </button>
+  <button class="nav-item" data-page="pageRecords" onclick="switchPage('pageRecords', this)">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">全部</span>
+  </button>
+</nav>
+
+<script>
+  var STORAGE_KEY = (function() {
+    var key = 'migraine_records';
+    try {
+      var link = document.querySelector('link[rel="manifest"]');
+      if (link && link.href) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', link.href, false);
+        xhr.send();
+        if (xhr.status === 200) {
+          var manifest = JSON.parse(xhr.responseText);
+          key = (manifest.name || manifest.short_name || 'migraine') + '_records';
+        }
+      }
+    } catch(e) {}
+    return key;
+  })();
+  var DATA_VERSION = 1;
+  var editingId = null;
+
+  (function migrateStorage() {
+    var oldKey = 'migraine_records';
+    if (STORAGE_KEY === oldKey) return;
+    if (localStorage.getItem(oldKey) && !localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, localStorage.getItem(oldKey));
+      localStorage.removeItem(oldKey);
+    }
+  })();
+
+  var TRIGGER_IDS = ['t-stayup','t-stress','t-coffee','t-food','t-weather','t-screen','t-exercise','t-sleep'];
+
+  function showToast(msg, type) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + (type || 'success');
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 2000);
+  }
+
+  function loadRecords() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      var store = JSON.parse(raw);
+      if (Array.isArray(store)) return migrateRecords(store);
+      if (store && store.version === DATA_VERSION && Array.isArray(store.records)) {
+        return store.records.filter(isValidRecord);
+      }
+      return [];
+    } catch (e) { return []; }
+  }
+
+  function migrateRecords(arr) {
+    var valid = arr.filter(isValidRecord);
+    saveRecords(valid);
+    return valid;
+  }
+
+  function saveRecords(records) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, records: records }));
+  }
+
+  function isValidRecord(r) {
+    return r &&
+      typeof r.id === 'string' && r.id.length > 0 &&
+      typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
+      typeof r.painLevel === 'number' && r.painLevel >= 1 && r.painLevel <= 10 &&
+      typeof r.duration === 'number' && r.duration > 0 &&
+      typeof r.notes === 'string' &&
+      (Array.isArray(r.triggers) || typeof r.triggers === 'undefined');
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function painClass(level) { return level <= 3 ? 'low' : level <= 6 ? 'mid' : 'high'; }
+  function painLabel(level) { return level <= 3 ? '轻度' : level <= 6 ? '中度' : '重度'; }
+
+  function getSelectedTriggers() {
+    var s = [];
+    for (var i = 0; i < TRIGGER_IDS.length; i++) {
+      var cb = document.getElementById(TRIGGER_IDS[i]);
+      if (cb && cb.checked) s.push(cb.value);
+    }
+    return s;
+  }
+
+  function setSelectedTriggers(triggers) {
+    for (var i = 0; i < TRIGGER_IDS.length; i++) {
+      var cb = document.getElementById(TRIGGER_IDS[i]);
+      if (cb) cb.checked = triggers.indexOf(cb.value) !== -1;
+    }
+  }
+
+  function clearTriggers() {
+    for (var i = 0; i < TRIGGER_IDS.length; i++) {
+      var cb = document.getElementById(TRIGGER_IDS[i]);
+      if (cb) cb.checked = false;
+    }
+  }
+
+  function clearFieldError(fid) {
+    var el = document.getElementById(fid);
+    var err = document.getElementById('err-' + fid);
+    if (el) el.classList.remove('has-error');
+    if (err) err.textContent = '';
+  }
+
+  function setFieldError(fid, msg) {
+    var el = document.getElementById(fid);
+    var err = document.getElementById('err-' + fid);
+    if (el) el.classList.add('has-error');
+    if (err) err.textContent = msg;
+  }
+
+  function validateForm() {
+    var valid = true;
+    var dateVal = document.getElementById('date').value;
+    var painRaw = document.getElementById('painLevel').value;
+    var durRaw = document.getElementById('duration').value;
+    clearFieldError('date'); clearFieldError('painLevel'); clearFieldError('duration');
+    if (!dateVal) { setFieldError('date', '请选择日期'); valid = false; }
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { setFieldError('date', '格式无效'); valid = false; }
+    if (painRaw === '') { setFieldError('painLevel', '请填写'); valid = false; }
+    else { var p = Number(painRaw); if (isNaN(p) || !Number.isInteger(p)) { setFieldError('painLevel', '整数'); valid = false; } else if (p < 1 || p > 10) { setFieldError('painLevel', '1-10'); valid = false; } }
+    if (durRaw === '') { setFieldError('duration', '请填写'); valid = false; }
+    else { var d = Number(durRaw); if (isNaN(d) || d <= 0) { setFieldError('duration', '>0'); valid = false; } }
+    return valid;
+  }
+
+  function switchPage(pageId, navEl) {
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById(pageId).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    if (navEl) navEl.classList.add('active');
+    var fab = document.getElementById('fabBtn');
+    fab.style.display = pageId === 'pageHome' ? 'flex' : 'none';
+  }
+
+  function openForm(record) {
+    var modal = document.getElementById('formModal');
+    modal.classList.add('show');
+    if (record) {
+      editingId = record.id;
+      document.getElementById('editRecordId').value = record.id;
+      document.getElementById('date').value = record.date;
+      document.getElementById('painLevel').value = record.painLevel;
+      document.getElementById('duration').value = record.duration;
+      document.getElementById('notes').value = record.notes;
+      setSelectedTriggers(record.triggers || []);
+      document.getElementById('modalTitle').textContent = '编辑记录';
+      document.getElementById('modalTitle').classList.add('editing');
+      document.getElementById('editHint').style.display = 'block';
+      document.getElementById('btnSubmit').textContent = '更新记录';
+      document.getElementById('btnSubmit').classList.add('edit-mode');
+      document.getElementById('btnCancel').style.display = 'block';
+    } else {
+      resetForm();
+    }
+  }
+
+  function closeForm() {
+    document.getElementById('formModal').classList.remove('show');
+    resetForm();
+  }
+
+  function resetForm() {
+    editingId = null;
+    document.getElementById('migraineForm').reset();
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('editRecordId').value = '';
+    document.getElementById('modalTitle').textContent = '新增记录';
+    document.getElementById('modalTitle').classList.remove('editing');
+    document.getElementById('editHint').style.display = 'none';
+    document.getElementById('btnSubmit').textContent = '保存记录';
+    document.getElementById('btnSubmit').classList.remove('edit-mode');
+    document.getElementById('btnCancel').style.display = 'none';
+    clearFieldError('date'); clearFieldError('painLevel'); clearFieldError('duration');
+    clearTriggers();
+  }
+
+  function quickRecord(level) {
+    var today = new Date().toISOString().split('T')[0];
+    var records = loadRecords();
+    records.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: today,
+      painLevel: level,
+      duration: 1,
+      notes: '',
+      triggers: []
+    });
+    saveRecords(records);
+    showToast('记录成功');
+    renderAll();
+  }
+
+  function deleteRecord(id) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    var records = loadRecords().filter(function(r) { return r.id !== id; });
+    saveRecords(records);
+    if (editingId === id) closeForm();
+    showToast('已删除', 'info');
+    renderAll();
+  }
+
+  function exportData() {
+    var records = loadRecords();
+    if (records.length === 0) { showToast('暂无数据', 'warning'); return; }
+    var data = { version: DATA_VERSION, exportDate: new Date().toISOString(), recordCount: records.length, records: records };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'migraine_records_' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('导出成功（' + records.length + ' 条）');
+  }
+
+  function importData(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        var imported = Array.isArray(data) ? data : (data && Array.isArray(data.records)) ? data.records : [];
+        var valid = [];
+        for (var i = 0; i < imported.length; i++) {
+          var r = imported[i];
+          if (r && typeof r.id === 'string' && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
+              typeof r.painLevel === 'number' && r.painLevel >= 1 && r.painLevel <= 10 &&
+              typeof r.duration === 'number' && r.duration > 0 && typeof r.notes === 'string') {
+            if (!Array.isArray(r.triggers)) r.triggers = [];
+            valid.push(r);
+          }
+        }
+        if (valid.length === 0) { showToast('未找到有效记录', 'warning'); return; }
+        var existing = loadRecords();
+        var ids = {}; existing.forEach(function(r) { ids[r.id] = true; });
+        var newC = 0, skipC = 0;
+        valid.forEach(function(r) { if (ids[r.id]) skipC++; else { existing.push(r); newC++; } });
+        saveRecords(existing); renderAll();
+        showToast(newC > 0 ? '导入成功，新增 ' + newC + ' 条' + (skipC > 0 ? '，跳过 ' + skipC + ' 条重复' : '') : '所有记录已存在', newC > 0 ? 'success' : 'info');
+      } catch (err) { showToast('文件解析失败', 'warning'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function renderTodayCard() {
+    var today = new Date().toISOString().split('T')[0];
+    var records = loadRecords();
+    var todayRecords = records.filter(function(r) { return r.date === today; });
+    var now = new Date();
+    var weekDays = ['日','一','二','三','四','五','六'];
+    document.getElementById('todayDate').textContent = (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekDays[now.getDay()];
+    var actionBtn = document.getElementById('todayActionBtn');
+    if (todayRecords.length === 0) {
+      document.getElementById('todayStatus').textContent = '今天还没有记录';
+      document.getElementById('todaySub').textContent = '点击下方按钮快速记录';
+      actionBtn.textContent = '立即记录';
+      actionBtn.style.display = 'inline-block';
+    } else {
+      var maxPain = Math.max.apply(null, todayRecords.map(function(r) { return r.painLevel; }));
+      var totalDur = todayRecords.reduce(function(s, r) { return s + r.duration; }, 0);
+      document.getElementById('todayStatus').textContent = '疼痛等级 ' + maxPain + '/10 · ' + painLabel(maxPain);
+      document.getElementById('todaySub').textContent = '持续时间 ' + totalDur + ' 小时 · 共 ' + todayRecords.length + ' 次记录';
+      actionBtn.style.display = 'none';
+    }
+  }
+
+  function renderRecentList() {
+    var records = loadRecords().sort(function(a, b) { return b.date.localeCompare(a.date); });
+    var el = document.getElementById('recentList');
+    if (records.length === 0) { el.innerHTML = '<div class="empty-hint">暂无记录</div>'; return; }
+    var recent = records.slice(0, 3);
+    var html = '';
+    recent.forEach(function(r) {
+      var pc = painClass(r.painLevel);
+      html +=
+        '<div class="recent-item" onclick="openForm(loadRecords().find(function(x){return x.id===\'' + r.id + '\'}))">' +
+          '<div class="recent-dot ' + pc + '"></div>' +
+          '<div class="recent-info">' +
+            '<div class="recent-date">' + r.date.slice(5) + '</div>' +
+            '<div class="recent-meta">' + painLabel(r.painLevel) + ' · ' + r.duration + 'h' + (r.triggers && r.triggers.length > 0 ? ' · ' + r.triggers.join('、') : '') + '</div>' +
+          '</div>' +
+          '<div class="recent-pain">' + r.painLevel + '<span>/10</span></div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function renderStatGrid() {
+    var records = loadRecords();
+    var el = document.getElementById('statGrid');
+    if (records.length === 0) { el.innerHTML = ''; return; }
+    var now = new Date();
+    var sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    var sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+    var recentCount = records.filter(function(r) { return r.date >= sevenDaysStr; }).length;
+    var totalPain = 0; var painFreq = {};
+    records.forEach(function(r) { totalPain += r.painLevel; painFreq[r.painLevel] = (painFreq[r.painLevel] || 0) + 1; });
+    var avgPain = (totalPain / records.length).toFixed(1);
+    var mostCommon = 1, mostCount = 0;
+    for (var k in painFreq) { if (painFreq[k] > mostCount) { mostCount = painFreq[k]; mostCommon = parseInt(k, 10); } }
+    el.innerHTML =
+      '<div class="stat-box blue"><div class="stat-value">' + recentCount + ' <span class="unit">次</span></div><div class="stat-label">近7天发作</div></div>' +
+      '<div class="stat-box orange"><div class="stat-value">' + avgPain + '</div><div class="stat-label">平均疼痛</div></div>' +
+      '<div class="stat-box purple"><div class="stat-value">' + mostCommon + ' <span class="unit">/10</span></div><div class="stat-label">最常见等级</div></div>';
+  }
+
+  var painTrendChartInstance = null;
+  var weeklyChartInstance = null;
+
+  function renderCharts() {
+    var records = loadRecords();
+    var sorted = records.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
+    var painCanvas = document.getElementById('painTrendChart');
+    var painEmpty = document.getElementById('painTrendEmpty');
+    var weeklyCanvas = document.getElementById('weeklyChart');
+    var weeklyEmpty = document.getElementById('weeklyEmpty');
+
+    if (sorted.length === 0) {
+      painCanvas.style.display = 'none'; painEmpty.style.display = 'block';
+      weeklyCanvas.style.display = 'none'; weeklyEmpty.style.display = 'block';
+      if (painTrendChartInstance) { painTrendChartInstance.destroy(); painTrendChartInstance = null; }
+      if (weeklyChartInstance) { weeklyChartInstance.destroy(); weeklyChartInstance = null; }
+      return;
+    }
+
+    painCanvas.style.display = 'block'; painEmpty.style.display = 'none';
+    weeklyCanvas.style.display = 'block'; weeklyEmpty.style.display = 'none';
+
+    var labels = sorted.map(function(r) { return r.date.slice(5); });
+    var painData = sorted.map(function(r) { return r.painLevel; });
+
+    if (painTrendChartInstance) painTrendChartInstance.destroy();
+    painTrendChartInstance = new Chart(painCanvas, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: '疼痛等级', data: painData, borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.08)', borderWidth: 2, pointBackgroundColor: '#007aff', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 5, fill: true, tension: 0.3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1c1c1e', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 10, callbacks: { title: function(items) { return sorted[items[0].dataIndex].date; }, label: function(item) { return '疼痛: ' + item.raw + '/10'; } } } }, scales: { y: { min: 0, max: 10, ticks: { stepSize: 2, color: '#8e8e93', font: { size: 11 } }, grid: { color: '#f2f2f7' }, border: { display: false } }, x: { ticks: { color: '#8e8e93', font: { size: 10 }, maxRotation: 45 }, grid: { display: false }, border: { display: false } } } }
+    });
+
+    var weekMap = {};
+    sorted.forEach(function(r) {
+      var d = new Date(r.date);
+      var diff = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      var monday = new Date(d); monday.setDate(d.getDate() - diff);
+      var wk = monday.toISOString().split('T')[0];
+      weekMap[wk] = (weekMap[wk] || 0) + 1;
+    });
+    var weekKeys = Object.keys(weekMap).sort();
+    var weekLabels = weekKeys.map(function(k) { var e = new Date(k); e.setDate(e.getDate() + 6); return k.slice(5) + '~' + e.toISOString().slice(5, 10); });
+    var weekCounts = weekKeys.map(function(k) { return weekMap[k]; });
+
+    if (weeklyChartInstance) weeklyChartInstance.destroy();
+    weeklyChartInstance = new Chart(weeklyCanvas, {
+      type: 'bar',
+      data: { labels: weekLabels, datasets: [{ label: '发作次数', data: weekCounts, backgroundColor: 'rgba(0,122,255,0.6)', hoverBackgroundColor: 'rgba(0,122,255,0.8)', borderColor: '#007aff', borderWidth: 1, borderRadius: 6, maxBarThickness: 36 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1c1c1e', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 10, callbacks: { label: function(item) { return item.raw + ' 次'; } } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: '#8e8e93', font: { size: 11 } }, grid: { color: '#f2f2f7' }, border: { display: false } }, x: { ticks: { color: '#8e8e93', font: { size: 10 }, maxRotation: 45 }, grid: { display: false }, border: { display: false } } } }
+    });
+  }
+
+  function generateInsights() {
+    var records = loadRecords();
+    var panel = document.getElementById('insightPanel');
+    if (records.length === 0) { panel.innerHTML = '<div class="empty-hint">添加记录后查看</div>'; return; }
+
+    var insights = [];
+    var now = new Date();
+    var sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    var sevenDaysStr = sevenDaysAgo.toISOString().split('T')[0];
+    var thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    var thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+    var recent7 = records.filter(function(r) { return r.date >= sevenDaysStr; });
+    var recent30 = records.filter(function(r) { return r.date >= thirtyDaysStr; });
+    var totalPain = 0, totalDuration = 0, highPainCount = 0;
+    records.forEach(function(r) { totalPain += r.painLevel; totalDuration += r.duration; if (r.painLevel >= 7) highPainCount++; });
+    var avgPain = totalPain / records.length;
+    var avgDuration = totalDuration / records.length;
+
+    if (recent7.length >= 3) insights.push({ icon: '⚠️', text: '近7天发作 ' + recent7.length + ' 次，非常频繁，建议就医。' });
+    else if (recent7.length >= 2) insights.push({ icon: '⚡', text: '近7天发作 ' + recent7.length + ' 次，频率偏高。' });
+    else if (recent7.length === 0) insights.push({ icon: '✨', text: '近7天无发作，状况良好！' });
+
+    if (recent30.length >= 6) insights.push({ icon: '📅', text: '近30天发作 ' + recent30.length + ' 次，约每 ' + Math.round(30 / recent30.length) + ' 天一次。' });
+    if (avgPain >= 7) insights.push({ icon: '🔥', text: '平均疼痛 ' + avgPain.toFixed(1) + '，属重度，建议咨询医生。' });
+    else if (avgPain >= 5) insights.push({ icon: '💢', text: '平均疼痛 ' + avgPain.toFixed(1) + '，属中度。' });
+    else if (avgPain <= 3 && records.length >= 3) insights.push({ icon: '😊', text: '平均疼痛 ' + avgPain.toFixed(1) + '，较轻。' });
+    if (highPainCount > 0 && (highPainCount / records.length) >= 0.4) insights.push({ icon: '📈', text: '重度疼痛占比 ' + Math.round(highPainCount / records.length * 100) + '%。' });
+    if (avgDuration >= 6) insights.push({ icon: '⏳', text: '平均持续 ' + avgDuration.toFixed(1) + 'h，时间较长。' });
+
+    var sorted = records.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
+    if (sorted.length >= 3) {
+      var t = Math.floor(sorted.length * 2 / 3);
+      var eAvg = 0, lAvg = 0;
+      for (var j = 0; j < t; j++) eAvg += sorted[j].painLevel;
+      for (var k = t; k < sorted.length; k++) lAvg += sorted[k].painLevel;
+      eAvg /= t; lAvg /= (sorted.length - t);
+      if (lAvg - eAvg >= 2) insights.push({ icon: '📉', text: '疼痛呈上升趋势（' + eAvg.toFixed(1) + '→' + lAvg.toFixed(1) + '）。' });
+      else if (eAvg - lAvg >= 2) insights.push({ icon: '📉', text: '疼痛呈下降趋势（' + eAvg.toFixed(1) + '→' + lAvg.toFixed(1) + '）。' });
+    }
+
+    if (records.length >= 5) {
+      var dateCounts = {};
+      records.forEach(function(r) { dateCounts[r.date] = (dateCounts[r.date] || 0) + 1; });
+      var maxDay = 0; for (var dd in dateCounts) { if (dateCounts[dd] > maxDay) maxDay = dateCounts[dd]; }
+      if (maxDay >= 3) insights.push({ icon: '🔁', text: '曾有单日发作 ' + maxDay + ' 次。' });
+    }
+
+    var triggerCounts = {};
+    records.forEach(function(r) { (r.triggers || []).forEach(function(t) { triggerCounts[t] = (triggerCounts[t] || 0) + 1; }); });
+    var topTrigger = null, topTC = 0;
+    for (var tk in triggerCounts) { if (triggerCounts[tk] > topTC) { topTrigger = tk; topTC = triggerCounts[tk]; } }
+    if (topTrigger && topTC >= 2) insights.push({ icon: '🎯', text: '偏头痛可能与「' + topTrigger + '」相关（' + topTC + ' 次）。' });
+
+    if (insights.length === 0) insights.push({ icon: '📝', text: '数据较少，继续记录即可获得分析。' });
+
+    var html = '';
+    insights.forEach(function(ins) {
+      html += '<div class="insight-item"><span class="insight-icon">' + ins.icon + '</span><span>' + ins.text + '</span></div>';
+    });
+
+    var hasTriggers = false;
+    for (var tc in triggerCounts) { hasTriggers = true; break; }
+    if (hasTriggers) {
+      var stArr = [];
+      for (var tsk in triggerCounts) stArr.push({ name: tsk, count: triggerCounts[tsk] });
+      stArr.sort(function(a, b) { return b.count - a.count; });
+      var maxTC = stArr[0].count;
+      html += '<div class="trigger-analysis"><div class="trigger-analysis-title">🎯 诱因统计</div>';
+      stArr.forEach(function(st, si) {
+        var pct = Math.round(st.count / maxTC * 100);
+        html += '<div class="trigger-stat-row"><span class="trigger-stat-label">' + escapeHtml(st.name) + '</span><div class="trigger-stat-bar-wrap"><div class="trigger-stat-bar' + (si === 0 ? ' top' : '') + '" style="width:' + pct + '%"></div></div><span class="trigger-stat-count">' + st.count + '</span></div>';
+      });
+
+      var triggerPainMap = {};
+      records.forEach(function(r) { (r.triggers || []).forEach(function(t) { if (!triggerPainMap[t]) triggerPainMap[t] = []; triggerPainMap[t].push(r.painLevel); }); });
+      var corrItems = [];
+      for (var cp in triggerPainMap) {
+        var cArr = triggerPainMap[cp];
+        var cAvg = cArr.reduce(function(s, v) { return s + v; }, 0) / cArr.length;
+        if (cAvg >= 6 && triggerCounts[cp] >= 2) corrItems.push({ name: cp, avgPain: cAvg, count: triggerCounts[cp] });
+      }
+      corrItems.sort(function(a, b) { return b.avgPain - a.avgPain; });
+      if (corrItems.length > 0) {
+        html += '<div class="trigger-correlation"><div class="trigger-correlation-title">⚠️ 诱因与高疼痛关联</div>';
+        corrItems.forEach(function(ci) {
+          html += '<div class="trigger-correlation-item"><span class="dot"></span><span>「' + escapeHtml(ci.name) + '」平均疼痛 ' + ci.avgPain.toFixed(1) + ' 级（' + ci.count + ' 次）</span></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    panel.innerHTML = html;
+  }
+
+  function getFilteredRecords(records) {
+    var dateFrom = document.getElementById('filterDateFrom').value;
+    var dateTo = document.getElementById('filterDateTo').value;
+    var painMin = document.getElementById('filterPainMin').value;
+    var filtered = records;
+    if (dateFrom) filtered = filtered.filter(function(r) { return r.date >= dateFrom; });
+    if (dateTo) filtered = filtered.filter(function(r) { return r.date <= dateTo; });
+    if (painMin !== '') { var min = parseInt(painMin, 10); filtered = filtered.filter(function(r) { return r.painLevel >= min; }); }
+    return filtered;
+  }
+
+  function isFilterActive() {
+    return !!document.getElementById('filterDateFrom').value || !!document.getElementById('filterDateTo').value || document.getElementById('filterPainMin').value !== '';
+  }
+
+  function resetFilters() {
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterPainMin').value = '';
+    renderAll();
+  }
+
+  function renderRecordList() {
+    var allRecords = loadRecords();
+    var records = getFilteredRecords(allRecords);
+    var hint = document.getElementById('filterHint');
+    if (isFilterActive()) { hint.style.display = 'block'; hint.textContent = '筛选结果：' + records.length + ' 条（共 ' + allRecords.length + ' 条）'; }
+    else { hint.style.display = 'none'; }
+    var el = document.getElementById('recordList');
+    if (allRecords.length === 0) { el.innerHTML = '<div class="empty-hint">暂无记录，点击 + 添加</div>'; return; }
+    if (records.length === 0) { el.innerHTML = '<div class="empty-hint">没有匹配记录</div>'; return; }
+    records.sort(function(a, b) { return b.date.localeCompare(a.date); });
+    var html = '';
+    records.forEach(function(r) {
+      var pc = painClass(r.painLevel);
+      var isActive = r.id === editingId ? ' active-edit' : '';
+      html +=
+        '<div class="record-item' + isActive + '">' +
+          '<div class="record-top">' +
+            '<span class="record-date-text">' + r.date + '</span>' +
+            '<span class="record-pain-badge ' + pc + '">' + painLabel(r.painLevel) + ' ' + r.painLevel + '/10</span>' +
+          '</div>' +
+          '<div class="record-detail">⏱ ' + r.duration + ' 小时</div>' +
+          '<div class="pain-bar-wrap"><div class="pain-bar-bg"><div class="pain-bar-fill ' + pc + '" style="width:' + (r.painLevel * 10) + '%"></div></div></div>' +
+          (r.triggers && r.triggers.length > 0 ? '<div class="record-triggers">' + r.triggers.map(function(t) { return '<span class="record-trigger-tag">' + escapeHtml(t) + '</span>'; }).join('') + '</div>' : '') +
+          (r.notes ? '<div class="record-notes">' + escapeHtml(r.notes) + '</div>' : '') +
+          '<div class="record-actions">' +
+            '<button class="btn-sm edit" onclick="openForm(loadRecords().find(function(x){return x.id===\'' + r.id + '\'}))">编辑</button>' +
+            '<button class="btn-sm delete" onclick="deleteRecord(\'' + r.id + '\')">删除</button>' +
+          '</div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function renderAll() {
+    renderTodayCard();
+    renderRecentList();
+    renderStatGrid();
+    renderCharts();
+    generateInsights();
+    renderRecordList();
+  }
+
+  document.getElementById('migraineForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
+    var dateVal = document.getElementById('date').value;
+    var painVal = parseInt(document.getElementById('painLevel').value, 10);
+    var durVal = parseFloat(document.getElementById('duration').value);
+    var notesVal = document.getElementById('notes').value.trim();
+    var triggersVal = getSelectedTriggers();
+    var records = loadRecords();
+    var editId = document.getElementById('editRecordId').value;
+    if (editId) {
+      for (var i = 0; i < records.length; i++) {
+        if (records[i].id === editId) {
+          records[i].date = dateVal; records[i].painLevel = painVal;
+          records[i].duration = durVal; records[i].notes = notesVal; records[i].triggers = triggersVal;
+          break;
+        }
+      }
+      saveRecords(records);
+      showToast('记录已更新', 'info');
+    } else {
+      records.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        date: dateVal, painLevel: painVal, duration: durVal, notes: notesVal, triggers: triggersVal
+      });
+      saveRecords(records);
+      showToast('保存成功');
+    }
+    closeForm();
+    renderAll();
+  });
+
+  document.getElementById('btnCancel').addEventListener('click', closeForm);
+
+  document.getElementById('formModal').addEventListener('click', function(e) {
+    if (e.target === this) closeForm();
+  });
+
+  document.getElementById('date').addEventListener('input', function() { clearFieldError('date'); });
+  document.getElementById('painLevel').addEventListener('input', function() { clearFieldError('painLevel'); });
+  document.getElementById('duration').addEventListener('input', function() { clearFieldError('duration'); });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('filterDateFrom').addEventListener('input', renderAll);
+    document.getElementById('filterDateTo').addEventListener('input', renderAll);
+    document.getElementById('filterPainMin').addEventListener('change', renderAll);
+    renderAll();
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  }
+</script>
+</body>
+</html>
