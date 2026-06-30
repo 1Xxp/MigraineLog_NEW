@@ -941,6 +941,14 @@
         <div class="empty-hint">暂无记录</div>
       </div>
     </div>
+
+    <div>
+      <div class="card-title">💾 数据备份</div>
+      <div class="card" id="backupCard" style="padding:16px">
+        <div id="backupContent"></div>
+      </div>
+      <input type="file" id="backupFileInput" class="import-file-input" accept=".json" onchange="restoreFromBackup(event)">
+    </div>
   </div>
 
   <div class="page" id="pageStats">
@@ -1199,6 +1207,143 @@
 
   function saveRecords(records) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, records: records }));
+    var meta = getBackupMeta();
+    meta.saveCountSinceBackup = (meta.saveCountSinceBackup || 0) + 1;
+    updateBackupMeta(meta);
+    if (meta.saveCountSinceBackup >= 10) {
+      autoBackup();
+    }
+  }
+
+  function getBackupMeta() {
+    try {
+      var meta = JSON.parse(localStorage.getItem(STORAGE_KEY + '_backup_meta'));
+      return meta || { lastBackupDate: null, saveCountSinceBackup: 0 };
+    } catch(e) { return { lastBackupDate: null, saveCountSinceBackup: 0 }; }
+  }
+
+  function updateBackupMeta(meta) {
+    localStorage.setItem(STORAGE_KEY + '_backup_meta', JSON.stringify(meta));
+  }
+
+  function autoBackup() {
+    var records = loadRecords();
+    if (records.length === 0) return;
+    var data = { version: DATA_VERSION, exportDate: new Date().toISOString(), recordCount: records.length, records: records };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'migraine_backup_' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    var meta = getBackupMeta();
+    meta.lastBackupDate = new Date().toISOString().split('T')[0];
+    meta.saveCountSinceBackup = 0;
+    updateBackupMeta(meta);
+    showToast('已自动备份 ' + records.length + ' 条记录', 'info');
+  }
+
+  function manualBackup() {
+    var records = loadRecords();
+    if (records.length === 0) { showToast('暂无数据可备份', 'warning'); return; }
+    var data = { version: DATA_VERSION, exportDate: new Date().toISOString(), recordCount: records.length, records: records };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'migraine_backup_' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    var meta = getBackupMeta();
+    meta.lastBackupDate = new Date().toISOString().split('T')[0];
+    meta.saveCountSinceBackup = 0;
+    updateBackupMeta(meta);
+    showToast('备份成功（' + records.length + ' 条）');
+  }
+
+  function restoreFromBackup(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    if (!confirm('将从备份文件恢复数据，当前记录将被覆盖。确定继续？')) { event.target.value = ''; return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        var imported = Array.isArray(data) ? data : (data && Array.isArray(data.records)) ? data.records : [];
+        var valid = [];
+        for (var i = 0; i < imported.length; i++) {
+          var r = imported[i];
+          if (r && typeof r.id === 'string' && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
+              typeof r.painLevel === 'number' && r.painLevel >= 1 && r.painLevel <= 10 &&
+              typeof r.duration === 'number' && r.duration > 0 && typeof r.notes === 'string') {
+            if (!Array.isArray(r.triggers)) r.triggers = [];
+            if (!Array.isArray(r.locations)) r.locations = [];
+            if (!r.medication) r.medication = null;
+            valid.push(r);
+          }
+        }
+        if (valid.length === 0) { showToast('未找到有效记录', 'warning'); return; }
+        saveRecords(valid);
+        var meta = getBackupMeta();
+        meta.lastBackupDate = new Date().toISOString().split('T')[0];
+        meta.saveCountSinceBackup = 0;
+        updateBackupMeta(meta);
+        renderAll();
+        showToast('恢复成功（' + valid.length + ' 条）');
+      } catch (err) { showToast('备份文件解析失败', 'warning'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function renderBackupSection() {
+    var records = loadRecords();
+    var meta = getBackupMeta();
+    var el = document.getElementById('backupContent');
+    var html = '';
+
+    if (records.length === 0 && meta.lastBackupDate) {
+      html = '<div style="text-align:center;padding:8px 0">' +
+        '<div style="font-size:32px;margin-bottom:8px">⚠️</div>' +
+        '<div style="font-size:14px;font-weight:600;color:#ff3b30;margin-bottom:4px">未找到记录数据</div>' +
+        '<div style="font-size:13px;color:#8e8e93;margin-bottom:6px">浏览器可能清理了存储数据</div>' +
+        '<div style="font-size:12px;color:#8e8e93;margin-bottom:12px">上次备份：' + meta.lastBackupDate + '</div>' +
+        '<button class="btn-sm" style="background:#fff0f0;color:#ff3b30;font-weight:600;padding:8px 20px;font-size:14px" onclick="document.getElementById(\'backupFileInput\').click()">📥 从备份恢复</button>' +
+        '</div>';
+    } else if (records.length === 0) {
+      html = '<div style="text-align:center;padding:8px 0">' +
+        '<div style="font-size:14px;color:#8e8e93">暂无记录，添加记录后可导出备份</div>' +
+        '</div>';
+    } else {
+      var daysAgo = '';
+      if (meta.lastBackupDate) {
+        var last = new Date(meta.lastBackupDate);
+        var now = new Date();
+        var diff = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+        if (diff === 0) daysAgo = '今天';
+        else if (diff === 1) daysAgo = '昨天';
+        else daysAgo = diff + ' 天前';
+      }
+
+      html = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+        '<div>' +
+          '<div style="font-size:14px;font-weight:500;color:#1c1c1e">共 ' + records.length + ' 条记录</div>' +
+          '<div style="font-size:12px;color:#8e8e93;margin-top:2px">' +
+            (meta.lastBackupDate ? '上次备份：' + meta.lastBackupDate + '（' + daysAgo + '）' : '⚠️ 尚未备份，建议立即备份') +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px">' +
+          '<button class="btn-sm" style="background:#e5f0ff;color:#007aff;font-weight:600;padding:8px 16px;font-size:13px" onclick="manualBackup()">📥 立即备份</button>' +
+          '<button class="btn-sm" style="background:#f2f2f7;color:#636366;padding:8px 16px;font-size:13px" onclick="document.getElementById(\'backupFileInput\').click()">📤 恢复</button>' +
+        '</div>' +
+      '</div>';
+    }
+    el.innerHTML = html;
   }
 
   function isValidRecord(r) {
@@ -1669,6 +1814,7 @@
   function renderAll() {
     renderTodayCard();
     renderRecentList();
+    renderBackupSection();
     renderStatGrid();
     renderCharts();
     generateInsights();
